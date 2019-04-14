@@ -2582,9 +2582,10 @@ static int compute_transparency(png *z, uint8 tc[3], int out_n)
 static int expand_palette(png *a, uint8 *palette, int len, int pal_img_n)
 {
    uint32 i, pixel_count = a->s->img_x * a->s->img_y;
-   uint8 *p, *temp_out, *orig = a->out;
+   uint8 *p, *tp, *temp_out, *orig = a->out;
 
    p = (uint8 *) malloc(pixel_count * pal_img_n);
+   // tp = p;
    if (p == NULL) return e("outofmem", "Out of memory");
 
    // between here and free(out) below, exitting would leak
@@ -2612,7 +2613,7 @@ static int expand_palette(png *a, uint8 *palette, int len, int pal_img_n)
    a->out = temp_out;
 
    STBI_NOTUSED(len);
-
+   // free(tp);
    return 1;
 }
 

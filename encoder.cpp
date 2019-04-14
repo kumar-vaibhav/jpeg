@@ -21,6 +21,7 @@
 #include "jpgd.h"
 #include "stb_image.c"
 #include <ctype.h>
+#include <time.h>
 
 #if defined(_MSC_VER)
 #define strcasecmp _stricmp
@@ -263,6 +264,8 @@ int main(int arg_c, char *ppArgs[])
 {
     printf("jpge/jpgd example app\n");
 
+    const clock_t begin_time = clock();
+
     // Parse command line.
     bool run_exhausive_test = false;
     bool test_memory_compression = false;
@@ -348,6 +351,8 @@ int main(int arg_c, char *ppArgs[])
         return EXIT_FAILURE;
     }
 
+    printf ("File load time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
+
     log_printf("Source file: \"%s\", image resolution: %ix%i, actual comps: %i\n", pSrc_filename, width, height, actual_comps);
 
     // Fill in the compression parameter structure.
@@ -391,39 +396,43 @@ int main(int arg_c, char *ppArgs[])
         }
     }
 
+    printf ("Load and compression time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
+
     const long comp_file_size = get_file_size(pDst_filename);
     const uint total_pixels = width * height;
     log_printf("Compressed file size: %u, bits/pixel: %3.3f\n", comp_file_size, (comp_file_size * 8.0f) / total_pixels);
 
     // Now try loading the JPEG file using jpgd or stbi_image's JPEG decompressor.
-    int uncomp_width = 0, uncomp_height = 0, uncomp_actual_comps = 0, uncomp_req_comps = 3;
+    // int uncomp_width = 0, uncomp_height = 0, uncomp_actual_comps = 0, uncomp_req_comps = 3;
 
-    uint8 *pUncomp_image_data;
-    if (use_jpgd) {
-        pUncomp_image_data = jpgd::decompress_jpeg_image_from_file(pDst_filename, &uncomp_width, &uncomp_height, &uncomp_actual_comps, uncomp_req_comps);
-    } else {
-        pUncomp_image_data = stbi_load(pDst_filename, &uncomp_width, &uncomp_height, &uncomp_actual_comps, uncomp_req_comps);
-    }
+    // uint8 *pUncomp_image_data;
+    // if (use_jpgd) {
+    //     pUncomp_image_data = jpgd::decompress_jpeg_image_from_file(pDst_filename, &uncomp_width, &uncomp_height, &uncomp_actual_comps, uncomp_req_comps);
+    // } else {
+    //     pUncomp_image_data = stbi_load(pDst_filename, &uncomp_width, &uncomp_height, &uncomp_actual_comps, uncomp_req_comps);
+    // }
 
-    if (!pUncomp_image_data) {
-        log_printf("Failed loading compressed image file \"%s\"!\n", pDst_filename);
-        return EXIT_FAILURE;
-    }
+    // if (!pUncomp_image_data) {
+    //     log_printf("Failed loading compressed image file \"%s\"!\n", pDst_filename);
+    //     return EXIT_FAILURE;
+    // }
 
-    if ((uncomp_width != width) || (uncomp_height != height)) {
-        log_printf("Loaded JPEG file has a different resolution than the original file!\n");
-        return EXIT_FAILURE;
-    }
+    // if ((uncomp_width != width) || (uncomp_height != height)) {
+    //     log_printf("Loaded JPEG file has a different resolution than the original file!\n");
+    //     return EXIT_FAILURE;
+    // }
 
-    // Diff the original and compressed images.
-    image_compare_results results;
-    image_compare(results, width, height, pImage_data, req_comps, pUncomp_image_data, uncomp_req_comps, (params.m_subsampling == jpge::Y_ONLY) || (actual_comps == 1) || (uncomp_actual_comps == 1));
-    log_printf("Error Max: %f, Mean: %f, Mean^2: %f, RMSE: %f, PSNR: %f\n", results.max_err, results.mean, results.mean_squared, results.root_mean_squared, results.peak_snr);
+    // // Diff the original and compressed images.
+    // image_compare_results results;
+    // image_compare(results, width, height, pImage_data, req_comps, pUncomp_image_data, uncomp_req_comps, (params.m_subsampling == jpge::Y_ONLY) || (actual_comps == 1) || (uncomp_actual_comps == 1));
+    // log_printf("Error Max: %f, Mean: %f, Mean^2: %f, RMSE: %f, PSNR: %f\n", results.max_err, results.mean, results.mean_squared, results.root_mean_squared, results.peak_snr);
 
-    if (results.root_mean_squared > 40) {
-        return EXIT_FAILURE;
-    }
+    // if (results.root_mean_squared > 40) {
+    //     return EXIT_FAILURE;
+    // }
     log_printf("Success.\n");
+
+    printf ("Execution time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
 
     return EXIT_SUCCESS;
 }

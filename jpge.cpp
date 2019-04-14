@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 
 #define JPGE_MAX(a,b) (((a)>(b))?(a):(b))
 #define JPGE_MIN(a,b) (((a)<(b))?(a):(b))
@@ -119,7 +120,7 @@ static void dct(dct_t *data)
     dct_t z1, z2, z3, z4, z5, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp10, tmp11, tmp12, tmp13, *data_ptr;
 
     data_ptr = data;
-
+// can be parallelelized
     for (int c=0; c < 8; c++) {
         tmp0 = data_ptr[0] + data_ptr[7];
         tmp7 = data_ptr[0] - data_ptr[7];
@@ -822,6 +823,8 @@ bool jpeg_encoder::emit_end_markers()
 
 bool jpeg_encoder::compress_image()
 {
+    const clock_t begin_time = clock();
+
     for(int c=0; c < m_num_components; c++) {
         for (int y = 0; y < m_image[c].m_y; y+= 8) {
             for (int x = 0; x < m_image[c].m_x; x += 8) {
@@ -831,6 +834,8 @@ bool jpeg_encoder::compress_image()
             }
         }
     }
+
+    printf ("DCTQ time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
 
     for (int y = 0; y < m_y; y+= m_mcu_h) {
         code_mcu_row(y, false);
@@ -845,6 +850,7 @@ bool jpeg_encoder::compress_image()
         }
         code_mcu_row(y, true);
     }
+
     return emit_end_markers();
 }
 
