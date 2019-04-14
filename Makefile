@@ -1,6 +1,6 @@
 OBJS=jpge.o jpgd.o encoder.o
 BIN=encoder
-CXXFLAGS ?= -O3 -ffast-math -fno-signed-zeros -g
+CXXFLAGS ?= -O3 -ffast-math -fno-signed-zeros -pg
 
 $(BIN): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
