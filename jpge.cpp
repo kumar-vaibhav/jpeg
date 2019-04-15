@@ -42,9 +42,9 @@ static inline void jpge_free(void *p)
 enum { M_SOF0 = 0xC0, M_DHT = 0xC4, M_SOI = 0xD8, M_EOI = 0xD9, M_SOS = 0xDA, M_DQT = 0xDB, M_APP0 = 0xE0 };
 enum { DC_LUM_CODES = 12, AC_LUM_CODES = 256, DC_CHROMA_CODES = 12, AC_CHROMA_CODES = 256, MAX_HUFF_SYMBOLS = 257, MAX_HUFF_CODESIZE = 32 };
 
-static uint8 s_zag[64] = { 0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,35,42,49,56,57,50,43,36,29,22,15,23,30,37,44,51,58,59,52,45,38,31,39,46,53,60,61,54,47,55,62,63 };
-static int16 s_std_lum_quant[64] = { 16,11,12,14,12,10,16,14,13,14,18,17,16,19,24,40,26,24,22,22,24,49,35,37,29,40,58,51,61,60,57,51,56,55,64,72,92,78,64,68,87,69,55,56,80,109,81,87,95,98,103,104,103,62,77,113,121,112,100,120,92,101,103,99 };
-static int16 s_std_croma_quant[64] = { 17,18,18,24,21,24,47,26,26,47,99,66,56,66,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99 };
+static uint8 s_zag[64] = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
+static int16 s_std_lum_quant[64] = { 16, 11, 12, 14, 12, 10, 16, 14, 13, 14, 18, 17, 16, 19, 24, 40, 26, 24, 22, 22, 24, 49, 35, 37, 29, 40, 58, 51, 61, 60, 57, 51, 56, 55, 64, 72, 92, 78, 64, 68, 87, 69, 55, 56, 80, 109, 81, 87, 95, 98, 103, 104, 103, 62, 77, 113, 121, 112, 100, 120, 92, 101, 103, 99 };
+static int16 s_std_croma_quant[64] = { 17, 18, 18, 24, 21, 24, 47, 26, 26, 47, 99, 66, 56, 66, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99 };
 
 // Low-level helper functions.
 template <class T> inline void clear_obj(T &obj)
@@ -56,7 +56,7 @@ template<class T> static void RGB_to_YCC(image *img, const T *src, int width, in
 {
     for (int x = 0; x < width; x++) {
         const int r = src[x].r, g = src[x].g, b = src[x].b;
-        img[0].set_px( (0.299     * r) + (0.587     * g) + (0.114     * b)-128.0, x, y);
+        img[0].set_px( (0.299     * r) + (0.587     * g) + (0.114     * b) - 128.0, x, y);
         img[1].set_px(-(0.168736  * r) - (0.331264  * g) + (0.5       * b), x, y);
         img[2].set_px( (0.5       * r) - (0.418688  * g) - (0.081312  * b), x, y);
     }
@@ -64,15 +64,15 @@ template<class T> static void RGB_to_YCC(image *img, const T *src, int width, in
 
 template<class T> static void RGB_to_Y(image &img, const T *pSrc, int width, int y)
 {
-    for (int x=0; x < width; x++) {
-        img.set_px((pSrc[x].r*0.299) + (pSrc[x].g*0.587) + (pSrc[x].b*0.114)-128.0, x, y);
+    for (int x = 0; x < width; x++) {
+        img.set_px((pSrc[x].r * 0.299) + (pSrc[x].g * 0.587) + (pSrc[x].b * 0.114) - 128.0, x, y);
     }
 }
 
 static void Y_to_YCC(image *img, const uint8 *pSrc, int width, int y)
 {
-    for(int x=0; x < width; x++) {
-        img[0].set_px(pSrc[x]-128.0, x, y);
+    for (int x = 0; x < width; x++) {
+        img[0].set_px(pSrc[x] - 128.0, x, y);
         img[1].set_px(0, x, y);
         img[2].set_px(0, x, y);
     }
@@ -80,33 +80,33 @@ static void Y_to_YCC(image *img, const uint8 *pSrc, int width, int y)
 
 inline float image::get_px(int x, int y)
 {
-    return m_pixels[y*m_x + x];
+    return m_pixels[y * m_x + x];
 }
 
 inline void image::set_px(float px, int x, int y)
 {
-    m_pixels[y*m_x + x] = px;
+    m_pixels[y * m_x + x] = px;
 }
 
 dctq_t *image::get_dctq(int x, int y)
 {
-    return &m_dctqs[64*(y/8 * m_x/8 + x/8)];
+    return &m_dctqs[64 * (y / 8 * m_x / 8 + x / 8)];
 }
 
 void image::subsample(image &luma, int v_samp)
 {
     if (v_samp == 2) {
-        for(int y=0; y < m_y; y+=2) {
-            for(int x=0; x < m_x; x+=2) {
-                m_pixels[m_x/4*y + x/2] = blend_quad(x, y, luma);
+        for (int y = 0; y < m_y; y += 2) {
+            for (int x = 0; x < m_x; x += 2) {
+                m_pixels[m_x / 4 * y + x / 2] = blend_quad(x, y, luma);
             }
         }
         m_x /= 2;
         m_y /= 2;
     } else {
-        for(int y=0; y < m_y; y++) {
-            for(int x=0; x < m_x; x+=2) {
-                m_pixels[m_x/2*y + x/2] = blend_dual(x, y, luma);
+        for (int y = 0; y < m_y; y++) {
+            for (int x = 0; x < m_x; x += 2) {
+                m_pixels[m_x / 2 * y + x / 2] = blend_dual(x, y, luma);
             }
         }
         m_x /= 2;
@@ -120,8 +120,8 @@ static void dct(dct_t *data)
     dct_t z1, z2, z3, z4, z5, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp10, tmp11, tmp12, tmp13, *data_ptr;
 
     data_ptr = data;
-// can be parallelelized
-    for (int c=0; c < 8; c++) {
+// can be parallelized
+    for (int c = 0; c < 8; c++) {
         tmp0 = data_ptr[0] + data_ptr[7];
         tmp7 = data_ptr[0] - data_ptr[7];
         tmp1 = data_ptr[1] + data_ptr[6];
@@ -163,24 +163,24 @@ static void dct(dct_t *data)
 
     data_ptr = data;
 
-    for (int c=0; c < 8; c++) {
-        tmp0 = data_ptr[8*0] + data_ptr[8*7];
-        tmp7 = data_ptr[8*0] - data_ptr[8*7];
-        tmp1 = data_ptr[8*1] + data_ptr[8*6];
-        tmp6 = data_ptr[8*1] - data_ptr[8*6];
-        tmp2 = data_ptr[8*2] + data_ptr[8*5];
-        tmp5 = data_ptr[8*2] - data_ptr[8*5];
-        tmp3 = data_ptr[8*3] + data_ptr[8*4];
-        tmp4 = data_ptr[8*3] - data_ptr[8*4];
+    for (int c = 0; c < 8; c++) {
+        tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
+        tmp7 = data_ptr[8 * 0] - data_ptr[8 * 7];
+        tmp1 = data_ptr[8 * 1] + data_ptr[8 * 6];
+        tmp6 = data_ptr[8 * 1] - data_ptr[8 * 6];
+        tmp2 = data_ptr[8 * 2] + data_ptr[8 * 5];
+        tmp5 = data_ptr[8 * 2] - data_ptr[8 * 5];
+        tmp3 = data_ptr[8 * 3] + data_ptr[8 * 4];
+        tmp4 = data_ptr[8 * 3] - data_ptr[8 * 4];
         tmp10 = tmp0 + tmp3;
         tmp13 = tmp0 - tmp3;
         tmp11 = tmp1 + tmp2;
         tmp12 = tmp1 - tmp2;
-        data_ptr[8*0] = (tmp10 + tmp11) / 8.0;
-        data_ptr[8*4] = (tmp10 - tmp11) / 8.0;
+        data_ptr[8 * 0] = (tmp10 + tmp11) / 8.0;
+        data_ptr[8 * 4] = (tmp10 - tmp11) / 8.0;
         z1 = (tmp12 + tmp13) * 0.541196100;
-        data_ptr[8*2] = (z1 + tmp13 * 0.765366865) / 8.0;
-        data_ptr[8*6] = (z1 + tmp12 * -1.847759065) / 8.0;
+        data_ptr[8 * 2] = (z1 + tmp13 * 0.765366865) / 8.0;
+        data_ptr[8 * 6] = (z1 + tmp12 * -1.847759065) / 8.0;
         z1 = tmp4 + tmp7;
         z2 = tmp5 + tmp6;
         z3 = tmp4 + tmp6;
@@ -196,10 +196,10 @@ static void dct(dct_t *data)
         z4 *= -0.390180644;
         z3 += z5;
         z4 += z5;
-        data_ptr[8*7] = (tmp4 + z1 + z3) / 8.0;
-        data_ptr[8*5] = (tmp5 + z2 + z4) / 8.0;
-        data_ptr[8*3] = (tmp6 + z2 + z3) / 8.0;
-        data_ptr[8*1] = (tmp7 + z1 + z4) / 8.0;
+        data_ptr[8 * 7] = (tmp4 + z1 + z3) / 8.0;
+        data_ptr[8 * 5] = (tmp5 + z2 + z4) / 8.0;
+        data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
+        data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
         data_ptr++;
     }
 }
@@ -217,8 +217,8 @@ static inline sym_freq *radix_sort_syms(uint num_syms, sym_freq *pSyms0, sym_fre
         uint freq = pSyms0[i].m_key;
         hist[freq & 0xFF]++;
         hist[256 + ((freq >> 8) & 0xFF)]++;
-        hist[256*2 + ((freq >> 16) & 0xFF)]++;
-        hist[256*3 + ((freq >> 24) & 0xFF)]++;
+        hist[256 * 2 + ((freq >> 16) & 0xFF)]++;
+        hist[256 * 3 + ((freq >> 24) & 0xFF)]++;
     }
     sym_freq *pCur_syms = pSyms0, *pNew_syms = pSyms1;
     uint total_passes = cMaxPasses;
@@ -246,47 +246,47 @@ static inline sym_freq *radix_sort_syms(uint num_syms, sym_freq *pSyms0, sym_fre
 static void calculate_minimum_redundancy(sym_freq *A, int n)
 {
     int root, leaf, next, avbl, used, dpth;
-    if (n==0) {
+    if (n == 0) {
         return;
-    } else if (n==1) {
+    } else if (n == 1) {
         A[0].m_key = 1;
         return;
     }
     A[0].m_key += A[1].m_key;
     root = 0;
     leaf = 2;
-    for (next=1; next < n-1; next++) {
-        if (leaf>=n || A[root].m_key<A[leaf].m_key) {
+    for (next = 1; next < n - 1; next++) {
+        if (leaf >= n || A[root].m_key < A[leaf].m_key) {
             A[next].m_key = A[root].m_key;
             A[root++].m_key = next;
         } else {
             A[next].m_key = A[leaf++].m_key;
         }
-        if (leaf>=n || (root<next && A[root].m_key<A[leaf].m_key)) {
+        if (leaf >= n || (root < next && A[root].m_key < A[leaf].m_key)) {
             A[next].m_key += A[root].m_key;
             A[root++].m_key = next;
         } else {
             A[next].m_key += A[leaf++].m_key;
         }
     }
-    A[n-2].m_key = 0;
-    for (next=n-3; next>=0; next--) {
-        A[next].m_key = A[A[next].m_key].m_key+1;
+    A[n - 2].m_key = 0;
+    for (next = n - 3; next >= 0; next--) {
+        A[next].m_key = A[A[next].m_key].m_key + 1;
     }
     avbl = 1;
     used = dpth = 0;
-    root = n-2;
-    next = n-1;
-    while (avbl>0) {
-        while (root>=0 && (int)A[root].m_key==dpth) {
+    root = n - 2;
+    next = n - 1;
+    while (avbl > 0) {
+        while (root >= 0 && (int)A[root].m_key == dpth) {
             used++;
             root--;
         }
-        while (avbl>used) {
+        while (avbl > used) {
             A[next--].m_key = dpth;
             avbl--;
         }
-        avbl = 2*used; dpth++; used = 0;
+        avbl = 2 * used; dpth++; used = 0;
     }
 }
 
@@ -517,8 +517,8 @@ void huffman_table::compute()
         si++;
     }
 
-    memset(m_codes, 0, sizeof(m_codes[0])*256);
-    memset(m_code_sizes, 0, sizeof(m_code_sizes[0])*256);
+    memset(m_codes, 0, sizeof(m_codes[0]) * 256);
+    memset(m_code_sizes, 0, sizeof(m_code_sizes[0]) * 256);
     for (p = 0; p < last_p; p++) {
         m_codes[m_val[p]]      = huff_code[p];
         m_code_sizes[m_val[p]] = huff_size[p];
@@ -537,21 +537,21 @@ void jpeg_encoder::compute_quant_table(int32 *pDst, int16 *pSrc)
     for (int i = 0; i < 64; i++) {
         int32 j = pSrc[i];
         j = (j * q + 50L) / 100L;
-        pDst[i] = JPGE_MIN(JPGE_MAX(j, 1), 1024/3);
+        pDst[i] = JPGE_MIN(JPGE_MAX(j, 1), 1024 / 3);
     }
     // DC quantized worse than 8 makes overall quality fall off the cliff
-    if (pDst[0] > 8) pDst[0] = (pDst[0]+8*3)/4;
-    if (pDst[1] > 24) pDst[1] = (pDst[1]+24)/2;
-    if (pDst[2] > 24) pDst[2] = (pDst[2]+24)/2;
+    if (pDst[0] > 8) pDst[0] = (pDst[0] + 8 * 3) / 4;
+    if (pDst[1] > 24) pDst[1] = (pDst[1] + 24) / 2;
+    if (pDst[2] > 24) pDst[2] = (pDst[2] + 24) / 2;
 }
 
 void jpeg_encoder::reset_last_dc()
 {
     m_bit_buffer = 0;
     m_bits_in = 0;
-    m_comp[0].m_last_dc_val=0;
-    m_comp[1].m_last_dc_val=0;
-    m_comp[2].m_last_dc_val=0;
+    m_comp[0].m_last_dc_val = 0;
+    m_comp[1].m_last_dc_val = 0;
+    m_comp[2].m_last_dc_val = 0;
 }
 
 void jpeg_encoder::compute_huffman_tables()
@@ -607,7 +607,7 @@ bool jpeg_encoder::jpg_open(int p_x_res, int p_y_res)
     m_image[2].m_x = m_image[1].m_x = m_image[0].m_x = (m_x + m_mcu_w - 1) & (~(m_mcu_w - 1));
     m_image[2].m_y = m_image[1].m_y = m_image[0].m_y = (m_y + m_mcu_h - 1) & (~(m_mcu_h - 1));
 
-    for(int c=0; c < m_num_components; c++) {
+    for (int c = 0; c < m_num_components; c++) {
         m_image[c].init();
     }
 
@@ -637,35 +637,35 @@ void image::load_block(dct_t *pDst, int x, int y)
 {
     uint8 *pSrc;
     for (int i = 0; i < 8; i++, pDst += 8) {
-        pDst[0] = get_px(x+0, y+i);
-        pDst[1] = get_px(x+1, y+i);
-        pDst[2] = get_px(x+2, y+i);
-        pDst[3] = get_px(x+3, y+i);
-        pDst[4] = get_px(x+4, y+i);
-        pDst[5] = get_px(x+5, y+i);
-        pDst[6] = get_px(x+6, y+i);
-        pDst[7] = get_px(x+7, y+i);
+        pDst[0] = get_px(x + 0, y + i);
+        pDst[1] = get_px(x + 1, y + i);
+        pDst[2] = get_px(x + 2, y + i);
+        pDst[3] = get_px(x + 3, y + i);
+        pDst[4] = get_px(x + 4, y + i);
+        pDst[5] = get_px(x + 5, y + i);
+        pDst[6] = get_px(x + 6, y + i);
+        pDst[7] = get_px(x + 7, y + i);
     }
 }
 
 inline dct_t image::blend_dual(int x, int y, image &luma)
 {
-    dct_t a = 129-abs(luma.get_px(x,  y));
-    dct_t b = 129-abs(luma.get_px(x+1,y));
-    return (get_px(x,  y)*a
-          + get_px(x+1,y)*b) / (a+b);
+    dct_t a = 129 - abs(luma.get_px(x,  y));
+    dct_t b = 129 - abs(luma.get_px(x + 1, y));
+    return (get_px(x,  y) * a
+            + get_px(x + 1, y) * b) / (a + b);
 }
 
 inline dct_t image::blend_quad(int x, int y, image &luma)
 {
-    dct_t a = 129-abs(luma.get_px(x,  y  ));
-    dct_t b = 129-abs(luma.get_px(x+1,y  ));
-    dct_t c = 129-abs(luma.get_px(x,  y+1));
-    dct_t d = 129-abs(luma.get_px(x+1,y+1));
-    return  (get_px(x,  y  )*a
-           + get_px(x+1,y  )*b
-           + get_px(x,  y+1)*c
-           + get_px(x+1,y+1)*d) / (a+b+c+d);
+    dct_t a = 129 - abs(luma.get_px(x,  y  ));
+    dct_t b = 129 - abs(luma.get_px(x + 1, y  ));
+    dct_t c = 129 - abs(luma.get_px(x,  y + 1));
+    dct_t d = 129 - abs(luma.get_px(x + 1, y + 1));
+    return  (get_px(x,  y  ) * a
+             + get_px(x + 1, y  ) * b
+             + get_px(x,  y + 1) * c
+             + get_px(x + 1, y + 1) * d) / (a + b + c + d);
 }
 
 inline static dctq_t round_to_zero(const dct_t j, const int32 quant)
@@ -797,18 +797,18 @@ void jpeg_encoder::code_mcu_row(int y, bool write)
     } else if ((m_comp[0].m_h_samp == 2) && (m_comp[0].m_v_samp == 1)) {
         for (int x = 0; x < m_x; x += m_mcu_w) {
             code_block(m_image[0].get_dctq(x,   y), &m_huff[0], &m_comp[0], write);
-            code_block(m_image[0].get_dctq(x+8, y), &m_huff[0], &m_comp[0], write);
-            code_block(m_image[1].get_dctq(x/2, y), &m_huff[1], &m_comp[1], write);
-            code_block(m_image[2].get_dctq(x/2, y), &m_huff[1], &m_comp[2], write);
+            code_block(m_image[0].get_dctq(x + 8, y), &m_huff[0], &m_comp[0], write);
+            code_block(m_image[1].get_dctq(x / 2, y), &m_huff[1], &m_comp[1], write);
+            code_block(m_image[2].get_dctq(x / 2, y), &m_huff[1], &m_comp[2], write);
         }
     } else if ((m_comp[0].m_h_samp == 2) && (m_comp[0].m_v_samp == 2)) {
         for (int x = 0; x < m_x; x += m_mcu_w) {
             code_block(m_image[0].get_dctq(x,   y),   &m_huff[0], &m_comp[0], write);
-            code_block(m_image[0].get_dctq(x+8, y),   &m_huff[0], &m_comp[0], write);
-            code_block(m_image[0].get_dctq(x,   y+8), &m_huff[0], &m_comp[0], write);
-            code_block(m_image[0].get_dctq(x+8, y+8), &m_huff[0], &m_comp[0], write);
-            code_block(m_image[1].get_dctq(x/2, y/2), &m_huff[1], &m_comp[1], write);
-            code_block(m_image[2].get_dctq(x/2, y/2), &m_huff[1], &m_comp[2], write);
+            code_block(m_image[0].get_dctq(x + 8, y),   &m_huff[0], &m_comp[0], write);
+            code_block(m_image[0].get_dctq(x,   y + 8), &m_huff[0], &m_comp[0], write);
+            code_block(m_image[0].get_dctq(x + 8, y + 8), &m_huff[0], &m_comp[0], write);
+            code_block(m_image[1].get_dctq(x / 2, y / 2), &m_huff[1], &m_comp[1], write);
+            code_block(m_image[2].get_dctq(x / 2, y / 2), &m_huff[1], &m_comp[2], write);
         }
     }
 }
@@ -825,8 +825,8 @@ bool jpeg_encoder::compress_image()
 {
     const clock_t begin_time = clock();
 
-    for(int c=0; c < m_num_components; c++) {
-        for (int y = 0; y < m_image[c].m_y; y+= 8) {
+    for (int c = 0; c < m_num_components; c++) {
+        for (int y = 0; y < m_image[c].m_y; y += 8) {
             for (int x = 0; x < m_image[c].m_x; x += 8) {
                 dct_t sample[64];
                 m_image[c].load_block(sample, x, y);
@@ -837,14 +837,14 @@ bool jpeg_encoder::compress_image()
 
     printf ("DCTQ time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
 
-    for (int y = 0; y < m_y; y+= m_mcu_h) {
+    for (int y = 0; y < m_y; y += m_mcu_h) {
         code_mcu_row(y, false);
     }
     compute_huffman_tables();
     reset_last_dc();
 
     emit_start_markers();
-    for (int y = 0; y < m_y; y+= m_mcu_h) {
+    for (int y = 0; y < m_y; y += m_mcu_h) {
         if (!m_all_stream_writes_succeeded) {
             return false;
         }
@@ -861,8 +861,8 @@ void jpeg_encoder::load_mcu_Y(const uint8 *pSrc, int width, int bpp, int y)
     } else if (bpp == 3) {
         RGB_to_Y(m_image[0], reinterpret_cast<const rgb *>(pSrc), width, y);
     } else
-        for(int x=0; x < width; x++) {
-            m_image[0].set_px(pSrc[x]-128.0, x, y);
+        for (int x = 0; x < width; x++) {
+            m_image[0].set_px(pSrc[x] - 128.0, x, y);
         }
 
     // Possibly duplicate pixels at end of scanline if not a multiple of 8 or 16
@@ -883,7 +883,7 @@ void jpeg_encoder::load_mcu_YCC(const uint8 *pSrc, int width, int bpp, int y)
     }
 
     // Possibly duplicate pixels at end of scanline if not a multiple of 8 or 16
-    for(int c=0; c < m_num_components; c++) {
+    for (int c = 0; c < m_num_components; c++) {
         const float lastpx = m_image[c].get_px(width - 1, y);
         for (int x = width; x < m_image[0].m_x; x++) {
             m_image[c].set_px(lastpx, x, y);
@@ -893,7 +893,7 @@ void jpeg_encoder::load_mcu_YCC(const uint8 *pSrc, int width, int bpp, int y)
 
 void jpeg_encoder::clear()
 {
-    m_num_components=0;
+    m_num_components = 0;
     m_all_stream_writes_succeeded = true;
 }
 
@@ -920,7 +920,7 @@ bool jpeg_encoder::init(output_stream *pStream, int width, int height, const par
 
 void jpeg_encoder::deinit()
 {
-    for(int c=0; c < m_num_components; c++) {
+    for (int c = 0; c < m_num_components; c++) {
         m_image[c].deinit();
     }
     clear();
@@ -940,16 +940,16 @@ bool jpeg_encoder::read_image(const uint8 *image_data, int width, int height, in
         }
     }
 
-    for(int c=0; c < m_num_components; c++) {
+    for (int c = 0; c < m_num_components; c++) {
         for (int y = height; y < m_image[c].m_y; y++) {
-            for(int x=0; x < m_image[c].m_x; x++) {
-                m_image[c].set_px(m_image[c].get_px(x, y-1), x, y);
+            for (int x = 0; x < m_image[c].m_x; x++) {
+                m_image[c].set_px(m_image[c].get_px(x, y - 1), x, y);
             }
         }
     }
 
     if (m_comp[0].m_h_samp == 2) {
-        for(int c=1; c < m_num_components; c++) {
+        for (int c = 1; c < m_num_components; c++) {
             m_image[c].subsample(m_image[0], m_comp[0].m_v_samp);
         }
     }
@@ -957,10 +957,10 @@ bool jpeg_encoder::read_image(const uint8 *image_data, int width, int height, in
     // overflow white and black, making distortions overflow as well,
     // so distortions (ringing) will be clamped by the decoder
     if (m_huff[0].m_quantization_table[0] > 2) {
-        for(int c=0; c < m_num_components; c++) {
-            for(int y=0; y < m_image[c].m_y; y++) {
-                for(int x=0; x < m_image[c].m_x; x++) {
-                    float px = m_image[c].get_px(x,y);
+        for (int c = 0; c < m_num_components; c++) {
+            for (int y = 0; y < m_image[c].m_y; y++) {
+                for (int x = 0; x < m_image[c].m_x; x++) {
+                    float px = m_image[c].get_px(x, y);
                     if (px <= -128.f) {
                         px -= m_huff[0].m_quantization_table[0];
                     } else if (px >= 128.f) {
