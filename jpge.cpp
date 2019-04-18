@@ -115,11 +115,14 @@ void image::subsample(image &luma, int v_samp)
 
 
 // Forward DCT
-static void dct(dct_t *data)
+__global__ void dct(dct_t *data, dct_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
 {
     dct_t z1, z2, z3, z4, z5, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp10, tmp11, tmp12, tmp13, *data_ptr;
 
-    data_ptr = data;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    data_ptr = &data[(y * tX + x) * 64];
 // can be parallelized
     for (int c = 0; c < 8; c++) {
         tmp0 = data_ptr[0] + data_ptr[7];
@@ -161,7 +164,7 @@ static void dct(dct_t *data)
         data_ptr += 8;
     }
 
-    data_ptr = data;
+    data_ptr = data[(y * tX + x) * 64];
 
     for (int c = 0; c < 8; c++) {
         tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
@@ -201,6 +204,19 @@ static void dct(dct_t *data)
         data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
         data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
         data_ptr++;
+    }
+    for (int i = 0; i < 64; i++) {
+        dct_t j = data[(y * tX + x) * 64 + s_zag[i]];
+        int32 q = quant[i];
+        dctq_t res;
+        if (j < 0) {
+            dctq_t jtmp = -j + (q >> 1);
+            res = (jtmp < q) ? 0 : static_cast<dctq_t>(-(jtmp / q));
+        } else {
+            dctq_t jtmp = j + (q >> 1);
+            res = (jtmp < q) ? 0 : static_cast<dctq_t>((jtmp / q));
+        }
+        out[(y * tX + x) * 64 + i] = res;
     }
 }
 
@@ -825,14 +841,37 @@ bool jpeg_encoder::compress_image()
 {
     const clock_t begin_time = clock();
 
+
     for (int c = 0; c < m_num_components; c++) {
+        printf ("dim - %d %d", m_image[c].m_y, m_image[c].m_x);
+        dct_t *blocks_h = (dct_t*)malloc(sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y);
+        dct_t *out_h = (dct_t*)malloc(sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y);
+        int32 *quant_h = m_huff[c > 0].m_quantization_table;
+        dct_t *blocks_d;
+        dct_t *out_d;
+        int32 *quant_d;
+        uint8 *zigzag_d;
+        cudaMalloc(blocks_d, sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y);
+        cudaMalloc(out_d, sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y);
+        cudaMalloc(quant_d, sizeof(int32)*64);
+        cudaMalloc(zigzag_d, sizeof(int32)*64);
+
+        int blkX = m_image[c].m_x/8;
         for (int y = 0; y < m_image[c].m_y; y += 8) {
             for (int x = 0; x < m_image[c].m_x; x += 8) {
-                dct_t sample[64];
-                m_image[c].load_block(sample, x, y);
-                quantize_pixels(sample, m_image[c].get_dctq(x, y), m_huff[c > 0].m_quantization_table);
+                // dct_t sample[64];
+                m_image[c].load_block(blocks + (y/8*blkX + x/8)*64, x, y);
+                // quantize_pixels(sample, m_image[c].get_dctq(x, y), m_huff[c > 0].m_quantization_table);
             }
         }
+        cudaMemcpy(blocks_d, blocks_h, sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y,cudaMemcpyHostToDevice);
+        cudaMemcpy(quant_d, quant_h, sizeof(int32)*64,cudaMemcpyHostToDevice);
+        cudaMemcpy(zigzag_d, s_zag, sizeof(uint8)*64,cudaMemcpyHostToDevice);
+        // __global__ void dct(dct_t *data, dct_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
+        dim3 blockNum(m_image[c].m_x/8,m_image[c].m_y/8);
+        dct<<<blockNum,1>>>(blocks_d,out_d,quant_d,zigzag_d,m_image[c].m_x,m_image[c].m_y);
+        cudaMemcpy(m_image[c].get_dctq(0, 0), out_d, sizeof(dct_t)*m_image[c].m_x*m_image[c].m_y, cudaMemcpyDeviceToHost);
+
     }
 
     printf ("DCTQ time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
