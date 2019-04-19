@@ -17,9 +17,9 @@
 */
 
 // Note: jpge.cpp/h and jpgd.cpp/h are completely standalone, i.e. they do not have any dependencies to each other.
-#include "jpge.h"
-#include "jpgd.h"
-#include "stb_image.c"
+#include "jpge.cuh"
+#include "jpgd.cuh"
+#include "stb_image.cu"
 #include <ctype.h>
 #include <time.h>
 
