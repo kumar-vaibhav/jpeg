@@ -266,6 +266,10 @@ int main(int arg_c, char *ppArgs[])
 
     const clock_t begin_time = clock();
 
+    cudaFree(0);
+    printf ("GPU init time - %f s\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
+
+
     // Parse command line.
     bool run_exhausive_test = false;
     bool test_memory_compression = false;

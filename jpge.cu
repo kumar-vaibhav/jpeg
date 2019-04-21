@@ -147,100 +147,106 @@ void image::subsample(image &luma, int v_samp)
 // Forward DCT
 __global__ void dct(dct_t *data, dctq_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
 {
+    extern __shared__ dct_t arr[];
+
     dct_t z1, z2, z3, z4, z5, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp10, tmp11, tmp12, tmp13, *data_ptr;
 
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    if(x>=tX||y>=tY)
+    int blkPBlock = blockDim.x / 8;
+    // printf("%d %d - %d %d",x,tX,y,tY);
+    if (x >= tX * 8 || y >= tY)
         return;
+    // printf("%d %d\n",x,y);
 
-    data_ptr = &data[(y * tX + x) * 64];
-    for (int c = 0; c < 8; c++)
-    {
-        tmp0 = data_ptr[0] + data_ptr[7];
-        tmp7 = data_ptr[0] - data_ptr[7];
-        tmp1 = data_ptr[1] + data_ptr[6];
-        tmp6 = data_ptr[1] - data_ptr[6];
-        tmp2 = data_ptr[2] + data_ptr[5];
-        tmp5 = data_ptr[2] - data_ptr[5];
-        tmp3 = data_ptr[3] + data_ptr[4];
-        tmp4 = data_ptr[3] - data_ptr[4];
-        tmp10 = tmp0 + tmp3;
-        tmp13 = tmp0 - tmp3;
-        tmp11 = tmp1 + tmp2;
-        tmp12 = tmp1 - tmp2;
-        data_ptr[0] = tmp10 + tmp11;
-        data_ptr[4] = tmp10 - tmp11;
-        z1 = (tmp12 + tmp13) * 0.541196100;
-        data_ptr[2] = z1 + tmp13 * 0.765366865;
-        data_ptr[6] = z1 + tmp12 * -1.847759065;
-        z1 = tmp4 + tmp7;
-        z2 = tmp5 + tmp6;
-        z3 = tmp4 + tmp6;
-        z4 = tmp5 + tmp7;
-        z5 = (z3 + z4) * 1.175875602;
-        tmp4 *= 0.298631336;
-        tmp5 *= 2.053119869;
-        tmp6 *= 3.072711026;
-        tmp7 *= 1.501321110;
-        z1 *= -0.899976223;
-        z2 *= -2.562915447;
-        z3 *= -1.961570560;
-        z4 *= -0.390180644;
-        z3 += z5;
-        z4 += z5;
-        data_ptr[7] = tmp4 + z1 + z3;
-        data_ptr[5] = tmp5 + z2 + z4;
-        data_ptr[3] = tmp6 + z2 + z3;
-        data_ptr[1] = tmp7 + z1 + z4;
-        data_ptr += 8;
-    }
+    data_ptr = &data[(y * tX + x / 8) * 64 + x % 8];
 
-    data_ptr = &data[(y * tX + x) * 64];
+    for (int i = 0; i < 8; i++)
+        arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + threadIdx.x % 8 + i * 8] = data[(y * tX + x / 8) * 64 + x % 8 + i * 8];
 
-    for (int c = 0; c < 8; c++)
+    __syncthreads();
+
+    data_ptr = &arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + 8 * (threadIdx.x % 8)];
+    tmp0 = data_ptr[0] + data_ptr[7];
+    tmp7 = data_ptr[0] - data_ptr[7];
+    tmp1 = data_ptr[1] + data_ptr[6];
+    tmp6 = data_ptr[1] - data_ptr[6];
+    tmp2 = data_ptr[2] + data_ptr[5];
+    tmp5 = data_ptr[2] - data_ptr[5];
+    tmp3 = data_ptr[3] + data_ptr[4];
+    tmp4 = data_ptr[3] - data_ptr[4];
+    tmp10 = tmp0 + tmp3;
+    tmp13 = tmp0 - tmp3;
+    tmp11 = tmp1 + tmp2;
+    tmp12 = tmp1 - tmp2;
+    data_ptr[0] = tmp10 + tmp11;
+    data_ptr[4] = tmp10 - tmp11;
+    z1 = (tmp12 + tmp13) * 0.541196100;
+    data_ptr[2] = z1 + tmp13 * 0.765366865;
+    data_ptr[6] = z1 + tmp12 * -1.847759065;
+    z1 = tmp4 + tmp7;
+    z2 = tmp5 + tmp6;
+    z3 = tmp4 + tmp6;
+    z4 = tmp5 + tmp7;
+    z5 = (z3 + z4) * 1.175875602;
+    tmp4 *= 0.298631336;
+    tmp5 *= 2.053119869;
+    tmp6 *= 3.072711026;
+    tmp7 *= 1.501321110;
+    z1 *= -0.899976223;
+    z2 *= -2.562915447;
+    z3 *= -1.961570560;
+    z4 *= -0.390180644;
+    z3 += z5;
+    z4 += z5;
+    data_ptr[7] = tmp4 + z1 + z3;
+    data_ptr[5] = tmp5 + z2 + z4;
+    data_ptr[3] = tmp6 + z2 + z3;
+    data_ptr[1] = tmp7 + z1 + z4;
+
+    __syncthreads();
+
+    data_ptr = &arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + threadIdx.x % 8];
+    tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
+    tmp7 = data_ptr[8 * 0] - data_ptr[8 * 7];
+    tmp1 = data_ptr[8 * 1] + data_ptr[8 * 6];
+    tmp6 = data_ptr[8 * 1] - data_ptr[8 * 6];
+    tmp2 = data_ptr[8 * 2] + data_ptr[8 * 5];
+    tmp5 = data_ptr[8 * 2] - data_ptr[8 * 5];
+    tmp3 = data_ptr[8 * 3] + data_ptr[8 * 4];
+    tmp4 = data_ptr[8 * 3] - data_ptr[8 * 4];
+    tmp10 = tmp0 + tmp3;
+    tmp13 = tmp0 - tmp3;
+    tmp11 = tmp1 + tmp2;
+    tmp12 = tmp1 - tmp2;
+    data_ptr[8 * 0] = (tmp10 + tmp11) / 8.0;
+    data_ptr[8 * 4] = (tmp10 - tmp11) / 8.0;
+    z1 = (tmp12 + tmp13) * 0.541196100;
+    data_ptr[8 * 2] = (z1 + tmp13 * 0.765366865) / 8.0;
+    data_ptr[8 * 6] = (z1 + tmp12 * -1.847759065) / 8.0;
+    z1 = tmp4 + tmp7;
+    z2 = tmp5 + tmp6;
+    z3 = tmp4 + tmp6;
+    z4 = tmp5 + tmp7;
+    z5 = (z3 + z4) * 1.175875602;
+    tmp4 *= 0.298631336;
+    tmp5 *= 2.053119869;
+    tmp6 *= 3.072711026;
+    tmp7 *= 1.501321110;
+    z1 *= -0.899976223;
+    z2 *= -2.562915447;
+    z3 *= -1.961570560;
+    z4 *= -0.390180644;
+    z3 += z5;
+    z4 += z5;
+    data_ptr[8 * 7] = (tmp4 + z1 + z3) / 8.0;
+    data_ptr[8 * 5] = (tmp5 + z2 + z4) / 8.0;
+    data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
+    data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
+
+    for (int i = x % 8; i < 64; i += 8)
     {
-        tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
-        tmp7 = data_ptr[8 * 0] - data_ptr[8 * 7];
-        tmp1 = data_ptr[8 * 1] + data_ptr[8 * 6];
-        tmp6 = data_ptr[8 * 1] - data_ptr[8 * 6];
-        tmp2 = data_ptr[8 * 2] + data_ptr[8 * 5];
-        tmp5 = data_ptr[8 * 2] - data_ptr[8 * 5];
-        tmp3 = data_ptr[8 * 3] + data_ptr[8 * 4];
-        tmp4 = data_ptr[8 * 3] - data_ptr[8 * 4];
-        tmp10 = tmp0 + tmp3;
-        tmp13 = tmp0 - tmp3;
-        tmp11 = tmp1 + tmp2;
-        tmp12 = tmp1 - tmp2;
-        data_ptr[8 * 0] = (tmp10 + tmp11) / 8.0;
-        data_ptr[8 * 4] = (tmp10 - tmp11) / 8.0;
-        z1 = (tmp12 + tmp13) * 0.541196100;
-        data_ptr[8 * 2] = (z1 + tmp13 * 0.765366865) / 8.0;
-        data_ptr[8 * 6] = (z1 + tmp12 * -1.847759065) / 8.0;
-        z1 = tmp4 + tmp7;
-        z2 = tmp5 + tmp6;
-        z3 = tmp4 + tmp6;
-        z4 = tmp5 + tmp7;
-        z5 = (z3 + z4) * 1.175875602;
-        tmp4 *= 0.298631336;
-        tmp5 *= 2.053119869;
-        tmp6 *= 3.072711026;
-        tmp7 *= 1.501321110;
-        z1 *= -0.899976223;
-        z2 *= -2.562915447;
-        z3 *= -1.961570560;
-        z4 *= -0.390180644;
-        z3 += z5;
-        z4 += z5;
-        data_ptr[8 * 7] = (tmp4 + z1 + z3) / 8.0;
-        data_ptr[8 * 5] = (tmp5 + z2 + z4) / 8.0;
-        data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
-        data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
-        data_ptr++;
-    }
-    for (int i = 0; i < 64; i++)
-    {
-        dct_t j = data[(y * tX + x) * 64 + s_zag[i]];
+        dct_t j = arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + s_zag[i]];
         int32 q = quant[i];
         dctq_t res;
         if (j < 0)
@@ -253,7 +259,7 @@ __global__ void dct(dct_t *data, dctq_t *out, int32 *quant, uint8 *s_zag, int tX
             dctq_t jtmp = j + (q >> 1);
             res = (jtmp < q) ? 0 : static_cast<dctq_t>((jtmp / q));
         }
-        out[(y * tX + x) * 64 + i] = res;
+        out[(y * tX + x / 8) * 64 + i] = res;
     }
 }
 
@@ -1015,47 +1021,58 @@ bool jpeg_encoder::compress_image()
 
     // printf("In Time - %f s\n", float(clock() - begin_time) / CLOCKS_PER_SEC);
 
+    dct_t **blocks_h = (dct_t**)malloc(sizeof(dct_t*)*m_num_components);
+    dct_t **blocks_d = (dct_t**)malloc(sizeof(dct_t*)*m_num_components);
+    dctq_t **out_d = (dctq_t**)malloc(sizeof(dctq_t*)*m_num_components);
+    int32 **quant_d = (int32**)malloc(sizeof(int32*)*m_num_components);
+    uint8 **zigzag_d = (uint8**)malloc(sizeof(uint8*)*m_num_components);
+
     for (int c = 0; c < m_num_components; c++)
     {
         int wX = m_image[c].m_x, wY = m_image[c].m_y;
-        printf("dim - %d %d\n", wX, wY);
-        dct_t *blocks_h = (dct_t *)malloc(sizeof(dct_t) * wX * wY);
-        // dctq_t *out_h = (dctq_t *)malloc(sizeof(dctq_t) * wX * wY);
-        int32 *quant_h = m_huff[c > 0].m_quantization_table;
-        dct_t *blocks_d;
-        dctq_t *out_d;
-        int32 *quant_d;
-        uint8 *zigzag_d;
-        // printf("Malloc Time - %f s\n", float(clock() - begin_time) / CLOCKS_PER_SEC);
-        cudaMalloc(&blocks_d, sizeof(dct_t) * wX * wY);
-        cudaMalloc(&out_d, sizeof(dctq_t) * wX * wY);
-        cudaMalloc(&quant_d, sizeof(int32) * 64);
-        cudaMalloc(&zigzag_d, sizeof(int32) * 64);
-
-        printf("Setup Time - %f s\n", float(clock() - begin_time) / CLOCKS_PER_SEC);
-
+        cudaMallocHost (&blocks_h[c], (size_t)sizeof(dct_t) * wX * wY) ;
+        cudaMalloc(&blocks_d[c], sizeof(dct_t) * wX * wY);
+        cudaMalloc(&out_d[c], sizeof(dctq_t) * wX * wY);
+        cudaMalloc(&quant_d[c], sizeof(int32) * 64);
+        cudaMalloc(&zigzag_d[c], sizeof(uint8) * 64);
         int blkX = wX / 8;
         for (int y = 0; y < m_image[c].m_y; y += 8)
         {
             for (int x = 0; x < m_image[c].m_x; x += 8)
             {
                 // dct_t sample[64];
-                m_image[c].load_block(blocks_h + (y / 8 * blkX + x / 8) * 64, x, y);
+                m_image[c].load_block(blocks_h[c] + (y / 8 * blkX + x / 8) * 64, x, y);
                 // quantize_pixels(sample, m_image[c].get_dctq(x, y), m_huff[c > 0].m_quantization_table);
             }
         }
+    }
+
+    printf("DCTQ malloc and copy time - %f s\n", float(clock() - begin_time) / CLOCKS_PER_SEC);
+
+    for (int c = 0; c < m_num_components; c++)
+    {
+        cudaStream_t str;
+        cudaStreamCreate(&str);
+        int wX = m_image[c].m_x, wY = m_image[c].m_y;
+        // printf("dim - %d %d\n", wX, wY);
+        int32 *quant_h = m_huff[c > 0].m_quantization_table;
+
+        // printf("Setup Time - %f s\n", float(clock() - begin_time) / CLOCKS_PER_SEC);
         // printf("%d %f\n",c,float(clock() - begin_time) / CLOCKS_PER_SEC);
-        cudaMemcpy(blocks_d, blocks_h, sizeof(dct_t) * wX * wY, cudaMemcpyHostToDevice);
-        cudaMemcpy(quant_d, quant_h, sizeof(int32) * 64, cudaMemcpyHostToDevice);
-        cudaMemcpy(zigzag_d, s_zag, sizeof(uint8) * 64, cudaMemcpyHostToDevice);
+        cudaMemcpyAsync(blocks_d[c], blocks_h[c], sizeof(dct_t) * wX * wY, cudaMemcpyHostToDevice,str);
+        cudaMemcpyAsync(quant_d[c], quant_h, sizeof(int32) * 64, cudaMemcpyHostToDevice,str);
+        cudaMemcpyAsync(zigzag_d[c], s_zag, sizeof(uint8) * 64, cudaMemcpyHostToDevice,str);
         // __global__ void dct(dct_t *data, dct_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
-        int thrWidthPerBlock = 8;
-        dim3 thrNum(thrWidthPerBlock,thrWidthPerBlock);
-        dim3 blockNum((int)ceil((float)wX / (8*thrWidthPerBlock)), (int)ceil((float)wY / (8*thrWidthPerBlock)));
+        int thrWidthPerBlock = 16;
+        dim3 thrPerBlock(thrWidthPerBlock, thrWidthPerBlock);
+        // printf("blockNum -  %d %d\n",(int)ceil((double)wX / (8*thrPerBlock)), (int)ceil((double)wY / (8*thrPerBlock)));
+        dim3 blockNum((int)ceil((double)wX / thrWidthPerBlock), (int)ceil((double)wY / (8 * thrWidthPerBlock)));
         // printf("Kernel Call\n");
-        dct<<<blockNum, thrNum>>>(blocks_d, out_d, quant_d, zigzag_d, wX/8, wY/8);
+        int memSize = thrWidthPerBlock * thrWidthPerBlock * 8;
+        dct<<<blockNum, thrPerBlock, sizeof(dct_t) * memSize, str>>>(blocks_d[c], out_d[c], quant_d[c], zigzag_d[c], wX / 8, wY / 8);
         // printf("Kernel Exit\n");
-        cudaMemcpy(m_image[c].get_dctq(0, 0), out_d, sizeof(dctq_t) * wX * wY, cudaMemcpyDeviceToHost);
+        cudaMemcpyAsync(m_image[c].get_dctq(0, 0), out_d[c], sizeof(dctq_t) * wX * wY, cudaMemcpyDeviceToHost,str);
+        cudaStreamDestroy(str);
     }
     cudaDeviceSynchronize();
 
