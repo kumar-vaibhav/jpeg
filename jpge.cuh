@@ -122,18 +122,18 @@ public:
     void deinit();
 
     int m_x, m_y;
+    float *m_pixels;
 
     float get_px(int x, int y);
     void set_px(float px, int x, int y);
 
     void load_block(dct_t *, int x, int y);
-    void load_all_blocks(dct_t *, int wX, int wY);
     dctq_t *get_dctq(int x, int y);
 
     void subsample(image &luma, int v_samp);
 
 private:
-    float *m_pixels;
+    
     dctq_t *m_dctqs; // quantized dcts
 
     dct_t blend_dual(int x, int y, image &);
@@ -170,7 +170,7 @@ public:
     // You must call after all scanlines are processed to finish compression.
     bool compress_image();
     void load_mcu_Y(const uint8 *pSrc, int width, int bpp, int y);
-    void load_mcu_YCC(const uint8 *pSrc, int width, int bpp, int y);
+    void load_mcu_YCC(const uint8 *pSrc, int width, int bpp, int y, int height);
 
 private:
     jpeg_encoder(const jpeg_encoder &);

@@ -1049,7 +1049,7 @@ bool jpeg_encoder::compress_image()
         cudaMemcpy(quant_d, quant_h, sizeof(int32) * 64, cudaMemcpyHostToDevice);
         cudaMemcpy(zigzag_d, s_zag, sizeof(uint8) * 64, cudaMemcpyHostToDevice);
         // __global__ void dct(dct_t *data, dct_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
-        int thrWidthPerBlock = 8;
+        int thrWidthPerBlock = 16;
         dim3 thrNum(thrWidthPerBlock,thrWidthPerBlock);
         dim3 blockNum((int)ceil((float)wX / (8*thrWidthPerBlock)), (int)ceil((float)wY / (8*thrWidthPerBlock)));
         // printf("Kernel Call\n");
