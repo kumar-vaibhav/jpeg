@@ -135,100 +135,106 @@ void image::subsample(image &luma, int v_samp)
 // Forward DCT
 __global__ void dct(dct_t *data, dctq_t *out, int32 *quant, uint8 *s_zag, int tX, int tY)
 {
+    extern __shared__ dct_t arr[];
+
     dct_t z1, z2, z3, z4, z5, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp10, tmp11, tmp12, tmp13, *data_ptr;
 
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    if(x>=tX||y>=tY)
+    int blkPBlock = blockDim.x / 8;
+    // printf("%d %d - %d %d",x,tX,y,tY);
+    if (x >= tX * 8 || y >= tY)
         return;
+    // printf("%d %d\n",x,y);
 
-    data_ptr = &data[(y * tX + x) * 64];
-    for (int c = 0; c < 8; c++)
-    {
-        tmp0 = data_ptr[0] + data_ptr[7];
-        tmp7 = data_ptr[0] - data_ptr[7];
-        tmp1 = data_ptr[1] + data_ptr[6];
-        tmp6 = data_ptr[1] - data_ptr[6];
-        tmp2 = data_ptr[2] + data_ptr[5];
-        tmp5 = data_ptr[2] - data_ptr[5];
-        tmp3 = data_ptr[3] + data_ptr[4];
-        tmp4 = data_ptr[3] - data_ptr[4];
-        tmp10 = tmp0 + tmp3;
-        tmp13 = tmp0 - tmp3;
-        tmp11 = tmp1 + tmp2;
-        tmp12 = tmp1 - tmp2;
-        data_ptr[0] = tmp10 + tmp11;
-        data_ptr[4] = tmp10 - tmp11;
-        z1 = (tmp12 + tmp13) * 0.541196100;
-        data_ptr[2] = z1 + tmp13 * 0.765366865;
-        data_ptr[6] = z1 + tmp12 * -1.847759065;
-        z1 = tmp4 + tmp7;
-        z2 = tmp5 + tmp6;
-        z3 = tmp4 + tmp6;
-        z4 = tmp5 + tmp7;
-        z5 = (z3 + z4) * 1.175875602;
-        tmp4 *= 0.298631336;
-        tmp5 *= 2.053119869;
-        tmp6 *= 3.072711026;
-        tmp7 *= 1.501321110;
-        z1 *= -0.899976223;
-        z2 *= -2.562915447;
-        z3 *= -1.961570560;
-        z4 *= -0.390180644;
-        z3 += z5;
-        z4 += z5;
-        data_ptr[7] = tmp4 + z1 + z3;
-        data_ptr[5] = tmp5 + z2 + z4;
-        data_ptr[3] = tmp6 + z2 + z3;
-        data_ptr[1] = tmp7 + z1 + z4;
-        data_ptr += 8;
-    }
+    data_ptr = &data[(y * tX + x / 8) * 64 + x % 8];
 
-    data_ptr = &data[(y * tX + x) * 64];
+    for (int i = 0; i < 8; i++)
+        arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + threadIdx.x % 8 + i * 8] = data[(y * tX + x / 8) * 64 + x % 8 + i * 8];
 
-    for (int c = 0; c < 8; c++)
+    __syncthreads();
+
+    data_ptr = &arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + 8 * (threadIdx.x % 8)];
+    tmp0 = data_ptr[0] + data_ptr[7];
+    tmp7 = data_ptr[0] - data_ptr[7];
+    tmp1 = data_ptr[1] + data_ptr[6];
+    tmp6 = data_ptr[1] - data_ptr[6];
+    tmp2 = data_ptr[2] + data_ptr[5];
+    tmp5 = data_ptr[2] - data_ptr[5];
+    tmp3 = data_ptr[3] + data_ptr[4];
+    tmp4 = data_ptr[3] - data_ptr[4];
+    tmp10 = tmp0 + tmp3;
+    tmp13 = tmp0 - tmp3;
+    tmp11 = tmp1 + tmp2;
+    tmp12 = tmp1 - tmp2;
+    data_ptr[0] = tmp10 + tmp11;
+    data_ptr[4] = tmp10 - tmp11;
+    z1 = (tmp12 + tmp13) * 0.541196100;
+    data_ptr[2] = z1 + tmp13 * 0.765366865;
+    data_ptr[6] = z1 + tmp12 * -1.847759065;
+    z1 = tmp4 + tmp7;
+    z2 = tmp5 + tmp6;
+    z3 = tmp4 + tmp6;
+    z4 = tmp5 + tmp7;
+    z5 = (z3 + z4) * 1.175875602;
+    tmp4 *= 0.298631336;
+    tmp5 *= 2.053119869;
+    tmp6 *= 3.072711026;
+    tmp7 *= 1.501321110;
+    z1 *= -0.899976223;
+    z2 *= -2.562915447;
+    z3 *= -1.961570560;
+    z4 *= -0.390180644;
+    z3 += z5;
+    z4 += z5;
+    data_ptr[7] = tmp4 + z1 + z3;
+    data_ptr[5] = tmp5 + z2 + z4;
+    data_ptr[3] = tmp6 + z2 + z3;
+    data_ptr[1] = tmp7 + z1 + z4;
+
+    __syncthreads();
+
+    data_ptr = &arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + threadIdx.x % 8];
+    tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
+    tmp7 = data_ptr[8 * 0] - data_ptr[8 * 7];
+    tmp1 = data_ptr[8 * 1] + data_ptr[8 * 6];
+    tmp6 = data_ptr[8 * 1] - data_ptr[8 * 6];
+    tmp2 = data_ptr[8 * 2] + data_ptr[8 * 5];
+    tmp5 = data_ptr[8 * 2] - data_ptr[8 * 5];
+    tmp3 = data_ptr[8 * 3] + data_ptr[8 * 4];
+    tmp4 = data_ptr[8 * 3] - data_ptr[8 * 4];
+    tmp10 = tmp0 + tmp3;
+    tmp13 = tmp0 - tmp3;
+    tmp11 = tmp1 + tmp2;
+    tmp12 = tmp1 - tmp2;
+    data_ptr[8 * 0] = (tmp10 + tmp11) / 8.0;
+    data_ptr[8 * 4] = (tmp10 - tmp11) / 8.0;
+    z1 = (tmp12 + tmp13) * 0.541196100;
+    data_ptr[8 * 2] = (z1 + tmp13 * 0.765366865) / 8.0;
+    data_ptr[8 * 6] = (z1 + tmp12 * -1.847759065) / 8.0;
+    z1 = tmp4 + tmp7;
+    z2 = tmp5 + tmp6;
+    z3 = tmp4 + tmp6;
+    z4 = tmp5 + tmp7;
+    z5 = (z3 + z4) * 1.175875602;
+    tmp4 *= 0.298631336;
+    tmp5 *= 2.053119869;
+    tmp6 *= 3.072711026;
+    tmp7 *= 1.501321110;
+    z1 *= -0.899976223;
+    z2 *= -2.562915447;
+    z3 *= -1.961570560;
+    z4 *= -0.390180644;
+    z3 += z5;
+    z4 += z5;
+    data_ptr[8 * 7] = (tmp4 + z1 + z3) / 8.0;
+    data_ptr[8 * 5] = (tmp5 + z2 + z4) / 8.0;
+    data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
+    data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
+
+    for (int i = x % 8; i < 64; i += 8)
     {
-        tmp0 = data_ptr[8 * 0] + data_ptr[8 * 7];
-        tmp7 = data_ptr[8 * 0] - data_ptr[8 * 7];
-        tmp1 = data_ptr[8 * 1] + data_ptr[8 * 6];
-        tmp6 = data_ptr[8 * 1] - data_ptr[8 * 6];
-        tmp2 = data_ptr[8 * 2] + data_ptr[8 * 5];
-        tmp5 = data_ptr[8 * 2] - data_ptr[8 * 5];
-        tmp3 = data_ptr[8 * 3] + data_ptr[8 * 4];
-        tmp4 = data_ptr[8 * 3] - data_ptr[8 * 4];
-        tmp10 = tmp0 + tmp3;
-        tmp13 = tmp0 - tmp3;
-        tmp11 = tmp1 + tmp2;
-        tmp12 = tmp1 - tmp2;
-        data_ptr[8 * 0] = (tmp10 + tmp11) / 8.0;
-        data_ptr[8 * 4] = (tmp10 - tmp11) / 8.0;
-        z1 = (tmp12 + tmp13) * 0.541196100;
-        data_ptr[8 * 2] = (z1 + tmp13 * 0.765366865) / 8.0;
-        data_ptr[8 * 6] = (z1 + tmp12 * -1.847759065) / 8.0;
-        z1 = tmp4 + tmp7;
-        z2 = tmp5 + tmp6;
-        z3 = tmp4 + tmp6;
-        z4 = tmp5 + tmp7;
-        z5 = (z3 + z4) * 1.175875602;
-        tmp4 *= 0.298631336;
-        tmp5 *= 2.053119869;
-        tmp6 *= 3.072711026;
-        tmp7 *= 1.501321110;
-        z1 *= -0.899976223;
-        z2 *= -2.562915447;
-        z3 *= -1.961570560;
-        z4 *= -0.390180644;
-        z3 += z5;
-        z4 += z5;
-        data_ptr[8 * 7] = (tmp4 + z1 + z3) / 8.0;
-        data_ptr[8 * 5] = (tmp5 + z2 + z4) / 8.0;
-        data_ptr[8 * 3] = (tmp6 + z2 + z3) / 8.0;
-        data_ptr[8 * 1] = (tmp7 + z1 + z4) / 8.0;
-        data_ptr++;
-    }
-    for (int i = 0; i < 64; i++)
-    {
-        dct_t j = data[(y * tX + x) * 64 + s_zag[i]];
+        dct_t j = arr[(threadIdx.y * blkPBlock + threadIdx.x / 8) * 64 + s_zag[i]];
         int32 q = quant[i];
         dctq_t res;
         if (j < 0)
@@ -241,7 +247,7 @@ __global__ void dct(dct_t *data, dctq_t *out, int32 *quant, uint8 *s_zag, int tX
             dctq_t jtmp = j + (q >> 1);
             res = (jtmp < q) ? 0 : static_cast<dctq_t>((jtmp / q));
         }
-        out[(y * tX + x) * 64 + i] = res;
+        out[(y * tX + x / 8) * 64 + i] = res;
     }
 }
 
